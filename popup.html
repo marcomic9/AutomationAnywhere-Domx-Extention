@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 320px;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      background: #ffffff;
+      color: #333;
+    }
+    
+    .header {
+      background: #2c3e50;
+      color: white;
+      padding: 16px;
+      text-align: center;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .header p {
+      margin: 4px 0 0 0;
+      font-size: 11px;
+      opacity: 0.8;
+    }
+    
+    .content {
+      padding: 16px;
+    }
+    
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 10px 16px;
+      margin-bottom: 10px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    
+    .btn-primary {
+      background: #3498db;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #2980b9;
+    }
+    
+    .btn-secondary {
+      background: #ecf0f1;
+      color: #2c3e50;
+    }
+    
+    .btn-secondary:hover {
+      background: #bdc3c7;
+    }
+    
+    .info {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    
+    .info h3 {
+      margin: 0 0 8px 0;
+      font-size: 12px;
+      color: #2c3e50;
+      font-weight: 600;
+    }
+    
+    .info ul {
+      margin: 0;
+      padding-left: 16px;
+      font-size: 11px;
+      color: #666;
+      line-height: 1.5;
+    }
+    
+    .info li {
+      margin-bottom: 4px;
+    }
+    
+    .footer {
+      text-align: center;
+      padding: 12px;
+      font-size: 10px;
+      color: #999;
+      border-top: 1px solid #e9ecef;
+      background: #f8f9fa;
+    }
+
+    .status {
+      display: none;
+      padding: 10px 12px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+    
+    .status.success {
+      display: block;
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .status.info {
+      display: block;
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    
+    .status.error {
+      display: block;
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>DomX Inspector</h1>
+    <p>Generate robust selectors for Automation Anywhere</p>
+  </div>
+  
+  <div class="content">
+    <div id="status" class="status"></div>
+    
+    <button id="startPicker" class="btn btn-primary">
+      Start Picking
+    </button>
+    
+    <button id="openPanel" class="btn btn-secondary">
+      Open Side Panel
+    </button>
+    
+    <div class="info">
+      <h3>How to use</h3>
+      <ul>
+        <li>Click "Start Picking" to activate picker mode</li>
+        <li>Hover over elements to highlight them</li>
+        <li>Click any element to capture it</li>
+        <li>Press Escape to cancel picker mode</li>
+        <li>Copy generated DomX selectors for AA</li>
+      </ul>
+    </div>
+    
+    <div class="info">
+      <h3>AA Notes</h3>
+      <ul>
+        <li>AA uses 1-based indexing (not 0-based)</li>
+        <li>Use (//xpath)[N] for positional matching</li>
+        <li>XPath 1.0 only - no CSS selectors</li>
+      </ul>
+    </div>
+  </div>
+  
+  <div class="footer">
+    Phase 1: Element Picker & DomX Generator
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>

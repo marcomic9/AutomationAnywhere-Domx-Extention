@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DomX Inspector Test Page</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 { color: #0066ff; }
+    .section { margin: 30px 0; padding: 20px; border: 1px solid #dee2e6; border-radius: 8px; }
+    .section h2 { margin-top: 0; color: #333; }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-primary { background: #0066ff; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    input, select {
+      padding: 8px 12px;
+      margin: 5px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+    }
+    .test-elements { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    iframe { width: 100%; height: 200px; border: 1px solid #dee2e6; }
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      background: #28a745;
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 10000;
+      display: none;
+      font-weight: 500;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div id="notification" class="notification"></div>
+  <h1>🧪 DomX Inspector Test Page</h1>
+  <p>Use this page to test Phase 2 features of the DomX Inspector Chrome Extension.</p>
+
+  <div class="section">
+    <h2>1. ID-based Selectors</h2>
+    <button id="submit-btn" class="btn-primary">Submit Button (with ID)</button>
+    <button id="cancel-btn" class="btn-secondary">Cancel Button (with ID)</button>
+    <div id="status-message" style="margin-top: 10px; color: #6c757d;">Status message with ID</div>
+  </div>
+
+  <div class="section">
+    <h2>2. Dynamic ID Detection</h2>
+    <button id="Dialog_2_Fld4_1" class="btn-primary" data-automation-id="dynamic-id-btn">Dynamic ID Button</button>
+    <button id="row_34_action" class="btn-secondary" data-automation-id="row-action-btn">Another Dynamic ID</button>
+  </div>
+
+  <div class="section">
+    <h2>3. Attribute-based Selectors</h2>
+    <input type="text" name="username" placeholder="Username" aria-label="Username input" data-automation-id="username-input">
+    <input type="password" name="password" placeholder="Password" aria-label="Password input" data-automation-id="password-input">
+    <select name="country" aria-label="Country selection" data-automation-id="country-select">
+      <option value="">Select Country</option>
+      <option value="us">United States</option>
+      <option value="uk">United Kingdom</option>
+    </select>
+  </div>
+
+  <div class="section">
+    <h2>4. Text Content Selectors</h2>
+    <button class="btn-success" data-automation-id="save-changes-btn">Save Changes</button>
+    <button class="btn-secondary" data-automation-id="delete-item-btn">Delete Item</button>
+    <a href="#" style="color: #0066ff;" data-automation-id="more-info-link">Click here for more info</a>
+  </div>
+
+  <div class="section">
+    <h2>5. Sibling/Relational Selectors</h2>
+    <div>
+      <label for="email-input">Email Address:</label>
+      <input id="email-input" type="email" placeholder="Enter email" data-automation-id="email-input">
+    </div>
+    <div style="margin-top: 10px;">
+      <label for="phone-input">Phone Number:</label>
+      <input id="phone-input" type="tel" placeholder="Enter phone" data-automation-id="phone-input">
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>6. Multiple Matches (Positional)</h2>
+    <div class="test-elements">
+      <button class="btn-primary" data-automation-id="action-1-btn">Action 1</button>
+      <button class="btn-primary" data-automation-id="action-2-btn">Action 2</button>
+      <button class="btn-primary" data-automation-id="action-3-btn">Action 3</button>
+      <button class="btn-primary" data-automation-id="action-4-btn">Action 4</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>7. Iframe Tests</h2>
+
+    <h3>7a. Named Iframe (same-origin)</h3>
+    <p>Element inside a named iframe — AA can switch via <code>//iframe[@name='test-frame']</code></p>
+    <iframe name="test-frame" id="test-iframe" srcdoc="<!DOCTYPE html><html><head><style>body{padding:20px;font-family:sans-serif;}</style></head><body><button id='iframe-button' data-automation-id='iframe-button' style='padding:10px 20px;background:#28a745;color:white;border:none;border-radius:4px;'>Button in Named Iframe</button><p>This is inside iframe name='test-frame'</p><input type='text' name='iframe-input' data-automation-id='iframe-input' placeholder='Type in iframe' style='padding:8px;margin-top:8px;border:1px solid #ccc;border-radius:4px;'></body></html>"></iframe>
+
+    <h3>7b. ID-only Iframe (same-origin)</h3>
+    <p>Element inside an ID-only iframe — AA can switch via <code>//iframe[@id='content-frame']</code></p>
+    <iframe id="content-frame" srcdoc="<!DOCTYPE html><html><head><style>body{padding:20px;font-family:sans-serif;}</style></head><body><button class='btn' data-automation-id='content-iframe-button' style='padding:10px 20px;background:#e74c3c;color:white;border:none;border-radius:4px;'>Button in ID Iframe</button><select name='iframe-select' data-automation-id='iframe-select' style='padding:8px;margin-top:8px;'><option>Option A</option><option>Option B</option><option>Option C</option></select></body></html>"></iframe>
+
+    <h3>7c. Nested Iframes (same-origin)</h3>
+    <p>Element inside nested iframes — AA needs <b>two</b> frame switches</p>
+    <iframe name="outer-frame" id="outer-iframe" style="height:250px;" srcdoc="<!DOCTYPE html><html><head><style>body{padding:15px;font-family:sans-serif;background:#f0f0f0;}</style></head><body><h4 style='margin:0 0 10px;'>Outer Iframe</h4><iframe name='inner-frame' id='inner-iframe' style='width:100%;height:150px;border:1px solid #999;' srcdoc=&quot;<!DOCTYPE html><html><head><style>body{padding:15px;font-family:sans-serif;background:#e8e8e8;}</style></head><body><button id='deep-button' data-automation-id='deep-button' style='padding:10px 20px;background:#8e44ad;color:white;border:none;border-radius:4px;'>Deep Nested Button</button><p>Inside inner-frame → inside outer-frame</p></body></html>&quot;></iframe></body></html>"></iframe>
+  </div>
+
+  <div class="section">
+    <h2>Test Instructions</h2>
+    <ol>
+      <li>Load the DomX Inspector extension in Chrome (chrome://extensions → Developer mode → Load unpacked)</li>
+      <li>Click the extension icon → "Start Picking" to activate picker mode</li>
+      <li>Hover over elements — they highlight with a blue border</li>
+      <li>Click any element to capture it and generate selectors</li>
+      <li>Press Escape to cancel picker mode</li>
+      <li>Click "Validate" on any selector to test it — matched elements highlight green</li>
+      <li>Test the iframe element to see iframe detection warning</li>
+      <li>Try dynamic ID buttons (section 2) — hardened contains() selectors auto-generate</li>
+      <li>Try sibling/relational elements (section 5) — label→input patterns appear</li>
+    </ol>
+  </div>
+
+  <script>
+    // Notification system
+    function showNotification(message, color = '#28a745') {
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      notification.style.background = color;
+      notification.style.display = 'block';
+      setTimeout(() => {
+        notification.style.display = 'none';
+      }, 2000);
+    }
+
+    // Add click handlers to all buttons
+    document.querySelectorAll('button').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const buttonText = e.target.textContent.trim();
+        showNotification(`Clicked: "${buttonText}"`);
+      });
+    });
+
+    // Add click handler for the link
+    document.querySelector('a[href="#"]').addEventListener('click', (e) => {
+      e.preventDefault();
+      showNotification('Link clicked!');
+    });
+
+    // Add input change handlers
+    document.querySelectorAll('input, select').forEach(input => {
+      input.addEventListener('change', (e) => {
+        const label = e.target.getAttribute('aria-label') || e.target.name || e.target.type;
+        showNotification(`Changed: ${label} = "${e.target.value}"`);
+      });
+    });
+
+    // Handle all iframe button clicks
+    function setupIframeHandlers(iframe, color = '#0066ff', depth = 0) {
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        if (!iframeDoc) return;
+
+        // Add handlers to buttons in this iframe
+        iframeDoc.querySelectorAll('button').forEach(button => {
+          button.addEventListener('click', (e) => {
+            const buttonText = e.target.textContent.trim();
+            const prefix = depth > 0 ? ` [nested ${depth}]` : '';
+            showNotification(`Clicked iframe${depth > 0 ? ' nested' : ''} button: "${buttonText}"${depth > 0 ? ` (depth ${depth})` : ''}`, color);
+          });
+        });
+
+        // Add handlers to inputs/selects in this iframe
+        iframeDoc.querySelectorAll('input, select').forEach(input => {
+          input.addEventListener('change', (e) => {
+            const label = e.target.getAttribute('aria-label') || e.target.name || e.target.type;
+            showNotification(`Changed in iframe: ${label} = "${e.target.value}"`, color);
+          });
+        });
+
+        // Handle nested iframes (recursive)
+        if (depth < 2) { // Prevent infinite recursion
+          iframeDoc.querySelectorAll('iframe').forEach(nestedIframe => {
+            nestedIframe.addEventListener('load', () => {
+              setupIframeHandlers(nestedIframe, '#8e44ad', depth + 1);
+            });
+            // Try immediately in case already loaded
+            try {
+              setupIframeHandlers(nestedIframe, '#8e44ad', depth + 1);
+            } catch (e) {}
+          });
+        }
+      } catch (err) {
+        console.log('Cannot access iframe content:', err);
+      }
+    }
+
+    // Set up handlers for all iframes on the page
+    document.querySelectorAll('iframe').forEach((iframe, index) => {
+      const colors = ['#0066ff', '#e74c3c', '#8e44ad'];
+      iframe.addEventListener('load', () => {
+        setupIframeHandlers(iframe, colors[index % colors.length]);
+      });
+      // Try immediately in case already loaded
+      try {
+        setupIframeHandlers(iframe, colors[index % colors.length]);
+      } catch (e) {}
+    });
+  </script>
+</body>
+</html>
