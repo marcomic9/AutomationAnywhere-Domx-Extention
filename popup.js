@@ -2,7 +2,6 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
   const startPickerBtn = document.getElementById('startPicker');
-  const openPanelBtn = document.getElementById('openPanel');
   const statusDiv = document.getElementById('status');
 
   function showStatus(message, type = 'info') {
@@ -60,25 +59,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  openPanelBtn.addEventListener('click', async () => {
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      
-      // Ensure content script is injected
-      const injected = await injectContentScript(tab.id);
-      if (!injected) {
-        showStatus('Error: Cannot inject on this page.', 'error');
-        return;
-      }
-      
-      // Send message to background to open panel
-      chrome.runtime.sendMessage({ action: 'openSidePanel', tabId: tab.id });
-      
-      window.close();
-      
-    } catch (error) {
-      showStatus('Error: Could not open panel.', 'error');
-      console.error('Panel open error:', error);
-    }
-  });
+
 });

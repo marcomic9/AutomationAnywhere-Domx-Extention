@@ -1079,9 +1079,7 @@
 
     startNewPick() {
       this.hide();
-      if (window.domXPicker) {
-        window.domXPicker.activate();
-      }
+      chrome.runtime.sendMessage({ action: 'activatePicker' });
     }
 
     switchTab(tab) {

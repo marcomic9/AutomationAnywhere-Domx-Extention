@@ -70,9 +70,12 @@ class SidePanel {
     // Element information
     html += `
       <div class="element-info">
-        <strong>Captured:</strong> <span class="tag">${element.tagName}</span>
-        ${element.id ? `<span class="id">#${element.id}</span>` : ''}
-        ${element.text ? `<br><strong>Text:</strong> ${this.escapeHtml(element.text.substring(0, 50))}${element.text.length > 50 ? '...' : ''}` : ''}
+        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+          <span style="color:var(--text-muted); font-size:12px;">Captured Element:</span>
+          <span class="tag">${element.tagName}</span>
+          ${element.id ? `<span class="id">#${element.id}</span>` : ''}
+        </div>
+        ${element.text ? `<div style="margin-top:8px; font-size:12px;"><strong style="color:var(--text-muted); font-weight:normal;">Text:</strong> ${this.escapeHtml(element.text.substring(0, 50))}${element.text.length > 50 ? '...' : ''}</div>` : ''}
       </div>
     `;
 
@@ -86,29 +89,29 @@ class SidePanel {
           const fxpath = frame.xpath || '(unresolved)';
           stepsHtml += `
             <div style="margin-bottom:6px;">
-              <div style="font-size:10px; font-weight:700; color:#856404; text-transform:uppercase;">Step ${i + 1}: Switch to Frame</div>
-              <code style="display:block; background:rgba(255,255,255,0.6); padding:6px; border-radius:3px; font-size:11px; word-break:break-all; margin-top:2px;">${this.escapeHtml(fxpath)}</code>
+              <div style="font-size:10px; font-weight:700; color:var(--warning-text); text-transform:uppercase;">Step ${i + 1}: Switch to Frame</div>
+              <code style="display:block; background:var(--bg-color); padding:8px; border:1px solid var(--border-color); border-radius:6px; font-size:11px; word-break:break-all; margin-top:4px;">${this.escapeHtml(fxpath)}</code>
             </div>`;
         }
         stepsHtml += `
             <div>
-              <div style="font-size:10px; font-weight:700; color:#155724; text-transform:uppercase;">Step ${fi.framePath.length + 1}: Interact with Element</div>
-              <div style="font-size:10px; color:#666; margin-top:2px;">Use selector below in DomX field</div>
+              <div style="font-size:10px; font-weight:700; color:var(--success-text); text-transform:uppercase;">Step ${fi.framePath.length + 1}: Interact with Element</div>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Use selector below in DomX field</div>
             </div>`;
 
         html += `
-          <div class="iframe-warning" style="background:#fff8e1; border:1px solid #ffe082;">
+          <div class="iframe-warning">
             <strong>🔲 IFRAME CONTEXT (Depth: ${fi.depth})</strong><br>
-            ${fi.isCrossOrigin ? '<div style="color:#c62828; font-size:10px; margin:4px 0;">⚠️ Cross-origin frame detected</div>' : ''}
+            ${fi.isCrossOrigin ? '<div style="color:var(--error-text); font-size:11px; margin:4px 0; background:var(--error-bg); padding:4px 8px; border-radius:4px;">⚠️ Cross-origin frame detected</div>' : ''}
             <div style="margin-top:8px;">${stepsHtml}</div>
-            ${fi.frameDomPath ? `<div style="margin-top:8px; padding:4px; background:rgba(0,0,0,0.05); border-radius:3px; font-size:10px;"><strong>FrameDomPath:</strong> <code>${this.escapeHtml(fi.frameDomPath)}</code></div>` : ''}
+            ${fi.frameDomPath ? `<div style="margin-top:8px; padding:8px; background:var(--bg-color); border-radius:6px; font-size:11px; border:1px solid var(--border-color);"><strong>FrameDomPath:</strong> <code>${this.escapeHtml(fi.frameDomPath)}</code></div>` : ''}
           </div>`;
       } else {
         html += `
           <div class="iframe-warning">
             <strong>⚠️ IFRAME DETECTED</strong><br>
             In Automation Anywhere, you must use the <b>"Browser: Switch to frame"</b> action first.<br>
-            <div style="margin-top:5px; padding:4px; background:rgba(255,255,255,0.5); font-family:monospace; border-radius:3px;">
+            <div style="margin-top:8px; padding:8px; background:var(--bg-color); font-family:ui-monospace, monospace; font-size:11px; border-radius:6px; border:1px solid var(--border-color);">
               URL: ${(element.iframeUrl || '').substring(0, 40)}...<br>
               Name: ${element.iframeName || 'none'}
             </div>
@@ -134,7 +137,7 @@ class SidePanel {
         
         dropdownHtml = `
           <div class="dropdown-options">
-            <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">TARGET OPTION:</div>
+            <div style="font-size:11px; font-weight:bold; color:var(--text-muted); margin-bottom:8px;">TARGET OPTION:</div>
             <select class="domx-opt" data-idx="${index}">${options}</select>
             <select class="domx-strat" data-idx="${index}">
               <option value="text">Strategy: Select by Text (Best)</option>
@@ -151,18 +154,18 @@ class SidePanel {
             <span class="selector-reason">${selector.reason}</span>
           </div>
           <code class="selector-code" data-idx="${index}">${this.escapeHtml(selector.selector)}</code>
-          <textarea class="domx-editor" data-idx="${index}" style="display:none; width:100%; min-height:60px; padding:10px; border-radius:4px; font-size:12px; font-family:monospace; border:2px solid #3498db; background:#fff; resize:vertical; box-sizing:border-box;">${this.escapeHtml(selector.selector)}</textarea>
+          <textarea class="domx-editor" data-idx="${index}" style="display:none; width:100%; min-height:60px; padding:10px; border-radius:4px; font-size:12px; font-family:ui-monospace, monospace; border:1px solid var(--primary); box-shadow:0 0 0 2px rgba(59,130,246,0.1); background:#fff; resize:vertical; box-sizing:border-box;">${this.escapeHtml(selector.selector)}</textarea>
           <div class="domx-editor-actions" data-idx="${index}" style="display:none; gap:6px; margin-top:6px;">
-            <button class="btn domx-editor-save" data-idx="${index}" style="flex:1; padding:6px; background:#27ae60; color:white; border:none; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">Save</button>
-            <button class="btn domx-editor-cancel" data-idx="${index}" style="flex:1; padding:6px; background:#95a5a6; color:white; border:none; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">Cancel</button>
-            <button class="btn domx-editor-retest" data-idx="${index}" style="flex:1; padding:6px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">Re-test</button>
+            <button class="btn domx-editor-save" data-idx="${index}" style="flex:1; padding:6px; background:var(--success-text); color:white; border:none; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">Save</button>
+            <button class="btn domx-editor-cancel" data-idx="${index}" style="flex:1; padding:6px; background:var(--text-muted); color:white; border:none; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">Cancel</button>
+            <button class="btn domx-editor-retest" data-idx="${index}" style="flex:1; padding:6px; background:var(--primary); color:white; border:none; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">Re-test</button>
           </div>
           ${dropdownHtml}
           <div class="selector-tip">${tip}</div>
           <div class="button-group">
             <button class="btn btn-copy" data-idx="${index}">Copy</button>
             <button class="btn btn-test" data-idx="${index}">Validate</button>
-            <button class="btn btn-edit" data-idx="${index}" style="background:#8e44ad; color:white;">Edit</button>
+            <button class="btn btn-edit" data-idx="${index}">Edit</button>
           </div>
           <div style="margin-top:8px;">
           </div>
@@ -174,20 +177,20 @@ class SidePanel {
 
     // AA Console Simulation
     html += `
-      <div style="margin-top:20px; border-top:2px solid #dee2e6; padding-top:16px;">
+      <div style="margin-top:24px; border-top:1px solid var(--border-color); padding-top:20px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <div style="font-size:13px; font-weight:700; color:#2c3e50;">🖥 AA Console</div>
-          <button id="domx-console-toggle" style="background:none; border:1px solid #bdc3c7; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:11px; color:#666;">Show</button>
+          <div style="font-size:14px; font-weight:600; color:var(--text-main);">🖥 AA Console</div>
+          <button id="domx-console-toggle" class="btn btn-copy" style="padding:4px 10px;">Show</button>
         </div>
         <div id="domx-console-section" style="display:none;">
-          <div style="font-size:11px; color:#95a5a6; margin-bottom:8px;">Type any XPath expression to test against the current page</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Type any XPath expression to test against the current page</div>
           <div style="position:relative;">
-            <div id="domx-console-highlight" aria-hidden="true" style="position:absolute; top:0; left:0; right:0; bottom:0; padding:10px; font-family:monospace; font-size:12px; white-space:pre-wrap; word-break:break-all; color:transparent; pointer-events:none; z-index:1; border:1px solid #ced4da; border-radius:4px; background:#1e1e1e; overflow:hidden;"></div>
+            <div id="domx-console-highlight" aria-hidden="true" style="position:absolute; top:0; left:0; right:0; bottom:0; padding:10px; font-family:monospace; font-size:12px; white-space:pre-wrap; word-break:break-all; color:transparent; pointer-events:none; z-index:1; border:1px solid #ced4da; border-radius:4px; background:#1f2937; overflow:hidden;"></div>
             <textarea id="domx-console-input" style="position:relative; width:100%; min-height:70px; padding:10px; font-family:monospace; font-size:12px; border:1px solid #ced4da; border-radius:4px; background:transparent; color:#d4d4d4; resize:vertical; box-sizing:border-box; z-index:2; caret-color:#fff;" placeholder="//input[@name='username']" spellcheck="false"></textarea>
           </div>
           <div style="display:flex; gap:8px; margin-top:8px;">
-            <button id="domx-console-run" style="flex:1; padding:8px; background:#27ae60; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px; font-weight:600;">▶ Run</button>
-            <button id="domx-console-clear" style="padding:8px 16px; background:#ecf0f1; color:#2c3e50; border:1px solid #bdc3c7; border-radius:4px; cursor:pointer; font-size:12px; font-weight:600;">Clear</button>
+            <button id="domx-console-run" class="btn btn-primary" style="flex:2; font-size:13px; font-weight:600;">▶ Run</button>
+            <button id="domx-console-clear" class="btn btn-copy" style="flex:1; font-size:13px; font-weight:600;">Clear</button>
           </div>
           <div id="domx-console-output" style="margin-top:12px;"></div>
         </div>
@@ -275,10 +278,10 @@ class SidePanel {
           output.innerHTML = `<div class="result error" style="font-size:12px;"><strong>❌ No match</strong> — 0 results on this page.<br><span style="font-size:11px;">Check if element is inside an iframe or content is dynamically loaded.</span></div>`;
           return;
         }
-        const color = count === 1 ? '#27ae60' : '#f39c12';
+        const color = count === 1 ? 'var(--success-text)' : 'var(--warning-text)';
         const badge = count === 1 ? '✅ Unique match' : `⚡ ${count} matches`;
         const tip = count === 1 ? 'Ideal for AA — no index needed.' : `Multiple matches — use <code>(${self.escapeHtml(xpath)})[N]</code> in AA. AA index starts at 1.`;
-        output.innerHTML = `<div class="result" style="background:${color}10; color:${color}; border:1px solid ${color}40; font-size:12px;"><strong>${badge}</strong><br><span style="font-size:11px;">${tip}</span></div>`;
+        output.innerHTML = `<div class="result" style="color:${color}; font-size:12px;"><strong>${badge}</strong><br><span style="font-size:11px; color:var(--text-muted);">${tip}</span></div>`;
       });
     });
   }
@@ -296,59 +299,13 @@ class SidePanel {
     }
   }
 
-  getAAHelperData(tagName, selector) {
-    const tag = tagName.toLowerCase();
-    const isPositional = selector.includes(')[');
-    const actions = [];
-    let primaryAction = '';
-
-    if (tag === 'input') {
-      primaryAction = 'Set Text';
-      actions.push({ action: 'Set Text', desc: 'Type text into the input field' });
-      actions.push({ action: 'Get Text', desc: 'Read the current value' });
-      actions.push({ action: 'Click', desc: 'Click to focus/activate' });
-    } else if (tag === 'select') {
-      primaryAction = 'Select Item';
-      actions.push({ action: 'Select Item', desc: 'Choose an option from the dropdown' });
-      actions.push({ action: 'Get Text', desc: 'Read the selected option' });
-    } else if (tag === 'button') {
-      primaryAction = 'Click';
-      actions.push({ action: 'Click', desc: 'Click the button' });
-      actions.push({ action: 'Get Text', desc: 'Read the button label' });
-    } else if (tag === 'a') {
-      primaryAction = 'Click';
-      actions.push({ action: 'Click', desc: 'Click the link' });
-      actions.push({ action: 'Get Text', desc: 'Read the link text' });
-    } else if (tag === 'textarea') {
-      primaryAction = 'Set Text';
-      actions.push({ action: 'Set Text', desc: 'Type text into the textarea' });
-      actions.push({ action: 'Get Text', desc: 'Read the current value' });
-    } else if (tag === 'img') {
-      primaryAction = 'Get Text';
-      actions.push({ action: 'Click', desc: 'Click the image' });
-      actions.push({ action: 'Get Text', desc: 'Read the alt attribute' });
-    } else if (tag === 'table' || tag === 'tr' || tag === 'td' || tag === 'th') {
-      primaryAction = 'Get Text';
-      actions.push({ action: 'Get Text', desc: 'Read cell/table content' });
-    } else if (tag === 'label' || tag === 'span' || tag === 'div' || tag === 'p' || tag === 'li') {
-      primaryAction = 'Get Text';
-      actions.push({ action: 'Get Text', desc: 'Read the element text' });
-      actions.push({ action: 'Click', desc: 'Click the element' });
-    } else {
-      primaryAction = 'Click';
-      actions.push({ action: 'Click', desc: 'Click the element' });
-      actions.push({ action: 'Get Text', desc: 'Read element content' });
-    }
-
-    return { tag, actions, primaryAction, isPositional };
-  }
-
   attachEventListeners() {
     // Copy buttons
     this.content.querySelectorAll('.btn-copy').forEach(btn => {
+      if (btn.id === 'domx-console-toggle' || btn.id === 'domx-console-clear') return;
       btn.addEventListener('click', (e) => {
         const index = e.target.dataset.idx;
-        this.copySelector(index);
+        if(index) this.copySelector(index);
       });
     });
 
@@ -408,7 +365,7 @@ class SidePanel {
         
         if (strategy === 'index') {
           selector += `/option[${parseInt(optSelect.value) + 1}]`;
-        } else         if (strategy === 'value' && option.value) {
+        } else if (strategy === 'value' && option.value) {
           selector += `/option[@value=${this.escapeXPath(option.value)}]`;
         } else {
           selector += `/option[normalize-space(text())=${this.escapeXPath(option.text)}]`;
@@ -554,37 +511,37 @@ class SidePanel {
   renderSettingsPanel() {
     const s = this.settings;
     const toggleRow = (id, label, desc, checked) => `
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f0f0f0;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border-color);">
         <div>
-          <div style="font-size:13px; font-weight:600; color:#2c3e50;">${label}</div>
-          <div style="font-size:11px; color:#95a5a6; margin-top:2px;">${desc}</div>
+          <div style="font-size:13px; font-weight:600; color:var(--text-main);">${label}</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${desc}</div>
         </div>
         <label style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer; flex-shrink:0; margin-left:12px;">
           <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} style="opacity:0; width:0; height:0;">
-          <span style="position:absolute; top:0; left:0; right:0; bottom:0; background:${checked ? '#27ae60' : '#bdc3c7'}; border-radius:24px; transition:0.2s;"></span>
+          <span style="position:absolute; top:0; left:0; right:0; bottom:0; background:${checked ? 'var(--primary)' : 'var(--border-color)'}; border-radius:24px; transition:0.2s;"></span>
           <span style="position:absolute; content:''; height:20px; width:20px; left:${checked ? '22px' : '2px'}; bottom:2px; background:white; border-radius:50%; transition:0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
         </label>
       </div>`;
 
     this.settingsPanel.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:99999; display:flex; align-items:center; justify-content:center;';
     this.settingsPanel.innerHTML = `
-      <div style="background:white; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.3); width:340px; font-family:sans-serif;">
-        <div style="background:#2c3e50; color:white; padding:16px; border-radius:12px 12px 0 0; display:flex; justify-content:space-between; align-items:center;">
-          <div style="font-weight:600; font-size:15px;">⚙ Settings</div>
-          <button id="domx-settings-close" style="background:none; border:none; color:white; font-size:22px; cursor:pointer; line-height:1;">&times;</button>
+      <div style="background:var(--bg-color); border-radius:12px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:340px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; border:1px solid var(--border-color); overflow:hidden;">
+        <div style="background:var(--surface-color); padding:16px 20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-weight:600; font-size:15px; color:var(--text-main);">⚙ Settings</div>
+          <button id="domx-settings-close" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer; line-height:1; padding:0; display:flex; align-items:center; justify-content:center;">&times;</button>
         </div>
-        <div style="padding:16px;">
+        <div style="padding:20px;">
           ${toggleRow('domx-cfg-autoharden', 'Auto-harden dynamic IDs', 'Automatically generate contains() variants for IDs with dynamic segments', s.autoHarden)}
           ${toggleRow('domx-cfg-showfragile', 'Show fragile selectors', 'Display positional/fragile selectors in results', s.showFragile)}
           ${toggleRow('domx-cfg-highlight', 'Highlight on pick', 'Automatically highlight matched elements after picking', s.highlightOnPick)}
-          <div style="padding:10px 0;">
-            <div style="font-size:13px; font-weight:600; color:#2c3e50;">Default positional index</div>
-            <div style="font-size:11px; color:#95a5a6; margin:4px 0 8px;">Default N value for (//xpath)[N] wrapper</div>
-            <input type="number" id="domx-cfg-index" value="${s.defaultIndex}" min="1" max="99" style="width:80px; padding:6px 10px; border:1px solid #ced4da; border-radius:4px; font-size:13px;">
+          <div style="padding:16px 0 8px;">
+            <div style="font-size:13px; font-weight:600; color:var(--text-main);">Default positional index</div>
+            <div style="font-size:12px; color:var(--text-muted); margin:4px 0 10px;">Default N value for (//xpath)[N] wrapper</div>
+            <input type="number" id="domx-cfg-index" value="${s.defaultIndex}" min="1" max="99" style="width:100%; padding:8px 12px; border:1px solid var(--border-color); border-radius:6px; font-size:13px; outline:none; background:var(--surface-color); color:var(--text-main);">
           </div>
-          <div style="display:flex; gap:8px; margin-top:16px;">
-            <button id="domx-settings-save" style="flex:1; padding:10px; background:#27ae60; color:white; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600;">Save</button>
-            <button id="domx-settings-reset" style="flex:1; padding:10px; background:#ecf0f1; color:#2c3e50; border:1px solid #bdc3c7; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600;">Reset</button>
+          <div style="display:flex; gap:10px; margin-top:20px;">
+            <button id="domx-settings-save" class="btn btn-primary" style="flex:1; padding:10px; font-size:13px; font-weight:600;">Save</button>
+            <button id="domx-settings-reset" class="btn btn-copy" style="flex:1; padding:10px; font-size:13px; font-weight:600;">Reset</button>
           </div>
         </div>
       </div>`;
