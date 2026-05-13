@@ -713,6 +713,10 @@
         });
       }
 
+      // Sort by stability rank: stable first, then moderate, then risky
+      const rank = { stable: 0, moderate: 1, risky: 2 };
+      selectors.sort((a, b) => (rank[a.type] ?? 3) - (rank[b.type] ?? 3));
+
       // Filter fragile selectors if showFragile is off
       if (settings && !settings.showFragile) {
         const filtered = selectors.filter(s => s.type !== 'risky');
@@ -841,9 +845,6 @@
       this.container.querySelector('#domx-tab-selectors').onclick = () => this.switchTab('selectors');
       this.container.querySelector('#domx-tab-console').onclick = () => this.switchTab('console');
       this.setupDrag();
-      this.aaModalContainer = document.createElement('div');
-      this.aaModalContainer.id = 'domx-aa-modal-container';
-      (document.body || document.documentElement).appendChild(this.aaModalContainer);
       this.createSettingsPanel();
     }
 
@@ -1256,12 +1257,12 @@
       }
 
       const selectorsHtml = this.currentSelectors.map((s, i) => {
-        const badge = s.type === 'stable' ? {bg:'#27ae60', tip:'Ideal for A360 Recorder'} : 
-                     (s.type === 'moderate' ? {bg:'#f39c12', tip:'Stable fallback'} : {bg:'#e74c3c', tip:'Avoid if possible'});
+        const badge = s.type === 'stable' ? {bg:'#ecfdf5', fg:'#065f46', dot:'#10b981', tip:'Ideal for A360 Recorder'} : 
+                     (s.type === 'moderate' ? {bg:'#fffbeb', fg:'#92400e', dot:'#f59e0b', tip:'Stable fallback'} : {bg:'#fef2f2', fg:'#991b1b', dot:'#ef4444', tip:'Avoid if possible'});
         
         const isPositional = s.selector.includes(')[');
-        const aaNote = isPositional ? '<div style="font-size:10px;color:#856404;background:#fff3cd;padding:4px 6px;border-radius:3px;margin-top:6px;border:1px solid #ffeaa7;">⚠️ AA index starts at 1, not 0. Change [N] to target different matches.</div>' : '';
-        const isFragile = s.type === 'risky' ? '<div style="font-size:10px;color:#721c24;background:#f8d7da;padding:4px 6px;border-radius:3px;margin-top:4px;border:1px solid #f5c6cb;">⚠️ FRAGILE — May break if page structure changes. Prefer stable selectors above.</div>' : '';
+        const aaNote = isPositional ? '<div style="font-size:10px;color:#92400e;background:#fffbeb;padding:5px 8px;border-radius:4px;margin-top:6px;border:1px solid #fde68a;">AA index starts at 1, not 0 — change [N] to target different matches.</div>' : '';
+        const isFragile = s.type === 'risky' ? '<div style="font-size:10px;color:#991b1b;background:#fef2f2;padding:5px 8px;border-radius:4px;margin-top:4px;border:1px solid #fecaca;">FRAGILE — May break if page structure changes. Prefer stable selectors above.</div>' : '';
 
         let dropdown = '';
         if (this.currentData.isSelect) {
@@ -1281,7 +1282,7 @@
         return `
           <div style="background:white; border:1px solid #dee2e6; border-radius:8px; padding:14px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
             <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-              <span style="background:${badge.bg}; color:white; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:bold;">${s.type.toUpperCase()}</span>
+              <span style="display:inline-flex; align-items:center; gap:5px; background:${badge.bg}; color:${badge.fg}; padding:3px 10px; border-radius:6px; font-size:10px; font-weight:600; letter-spacing:0.8px; line-height:1;"><span style="width:6px; height:6px; border-radius:50%; background:${badge.dot}; flex-shrink:0;"></span>${s.type.toUpperCase()}</span>
               <span style="color:#95a5a6; font-size:11px;">${s.reason}</span>
             </div>
             <code class="domx-code" data-idx="${i}" style="display:block; background:#f1f3f4; padding:10px; border-radius:4px; font-size:12px; word-break:break-all; font-family:monospace; border:1px solid #eee; white-space:pre-wrap;">${this.escapeHtml(s.selector)}</code>
@@ -1294,14 +1295,13 @@
             ${dropdown}
             ${aaNote}
             ${isFragile}
-            <div style="font-size:11px; color:#155724; background:#d4edda; padding:6px; border-radius:4px; margin-top:10px;">${badge.tip}</div>
+             <div style="font-size:11px; color:${badge.fg}; background:${badge.bg}; padding:6px 10px; border-radius:6px; margin-top:10px;">${badge.tip}</div>
             <div style="display:flex; gap:8px; margin-top:12px;">
               <button class="domx-copy" data-idx="${i}" style="flex:1; padding:8px; background:#2c3e50; color:white; border:none; border-radius:4px; cursor:pointer;">Copy</button>
               <button class="domx-test" data-idx="${i}" style="flex:1; padding:8px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer;">Validate</button>
               <button class="domx-edit" data-idx="${i}" style="flex:1; padding:8px; background:#8e44ad; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">Edit</button>
             </div>
             <div style="margin-top:8px;">
-              <button class="domx-aa-help" data-idx="${i}" style="width:100%; padding:6px; background:#ecf0f1; color:#2c3e50; border:1px solid #bdc3c7; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">📖 How to use in AA</button>
             </div>
           </div>`;
       }).join('');
@@ -1311,7 +1311,6 @@
       this.container.querySelectorAll('.domx-opt, .domx-strat').forEach(el => el.onchange = () => this.update(el.dataset.idx));
       this.container.querySelectorAll('.domx-copy').forEach(el => el.onclick = () => this.copy(el.dataset.idx));
       this.container.querySelectorAll('.domx-test').forEach(el => el.onclick = () => this.test(el.dataset.idx));
-      this.container.querySelectorAll('.domx-aa-help').forEach(el => el.onclick = () => this.showAAHelper(el.dataset.idx));
       this.container.querySelectorAll('.domx-edit').forEach(el => el.onclick = () => this.toggleEdit(el.dataset.idx));
       this.container.querySelectorAll('.domx-editor-save').forEach(el => el.onclick = () => this.saveEdit(el.dataset.idx));
       this.container.querySelectorAll('.domx-editor-cancel').forEach(el => el.onclick = () => this.cancelEdit(el.dataset.idx));
@@ -1391,24 +1390,6 @@
       }
       this.test(i);
       this.cancelEdit(i);
-    }
-
-    showAAHelper(i) {
-      const sel = this.getSel(i);
-      const s = this.currentSelectors[i];
-      this.aaModalContainer.innerHTML = this.getAAHelper(this.currentData.tagName, sel);
-      const modal = this.aaModalContainer.querySelector('.domx-aa-helper');
-      modal.style.display = 'block';
-      modal.querySelector('.domx-aa-close').onclick = () => {
-        modal.style.display = 'none';
-        this.aaModalContainer.innerHTML = '';
-      };
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-          modal.style.display = 'none';
-          this.aaModalContainer.innerHTML = '';
-        }
-      });
     }
 
     test(i) {

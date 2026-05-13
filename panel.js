@@ -61,7 +61,9 @@ class SidePanel {
 
   displayElement(element, selectors) {
     this.currentElement = element;
-    this.currentSelectors = selectors;
+    // Sort by stability rank: stable first, then moderate, then risky
+    const rank = { stable: 0, moderate: 1, risky: 2 };
+    this.currentSelectors = [...selectors].sort((a, b) => (rank[a.type] ?? 3) - (rank[b.type] ?? 3));
     
     let html = '';
     
@@ -122,7 +124,6 @@ class SidePanel {
     // Display selectors
     selectors.forEach((selector, index) => {
       const badgeClass = selector.type;
-      const badgeText = selector.type.toUpperCase();
       const tip = this.getSelectorTip(selector.type);
       
       let dropdownHtml = '';
@@ -146,7 +147,7 @@ class SidePanel {
       html += `
         <div class="selector-card">
           <div class="selector-header">
-            <span class="badge ${badgeClass}">${badgeText}</span>
+            <span class="badge ${badgeClass}"><span class="badge-dot"></span>${selector.type.toUpperCase()}</span>
             <span class="selector-reason">${selector.reason}</span>
           </div>
           <code class="selector-code" data-idx="${index}">${this.escapeHtml(selector.selector)}</code>
@@ -164,7 +165,6 @@ class SidePanel {
             <button class="btn btn-edit" data-idx="${index}" style="background:#8e44ad; color:white;">Edit</button>
           </div>
           <div style="margin-top:8px;">
-            <button class="btn btn-aa-help" data-idx="${index}" style="width:100%; padding:6px; background:#ecf0f1; color:#2c3e50; border:1px solid #bdc3c7; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">📖 How to use in AA</button>
           </div>
         </div>`;
     });
@@ -286,11 +286,11 @@ class SidePanel {
   getSelectorTip(type) {
     switch (type) {
       case 'stable':
-        return '✅ Ideal for Automation Anywhere - Highly reliable selector';
+        return 'Ideal for Automation Anywhere — highly reliable selector';
       case 'moderate':
-        return '⚡ Stable fallback - Should work in most cases';
+        return 'Stable fallback — should work in most cases';
       case 'risky':
-        return '⚠️ Avoid if possible - May break with page changes';
+        return 'Avoid if possible — may break with page changes';
       default:
         return '';
     }
@@ -365,14 +365,6 @@ class SidePanel {
       select.addEventListener('change', (e) => {
         const index = e.target.dataset.idx;
         this.updateSelectorDisplay(index);
-      });
-    });
-
-    // AA Helper buttons
-    this.content.querySelectorAll('.btn-aa-help').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const index = e.target.dataset.idx;
-        this.showAAHelper(index);
       });
     });
 
@@ -546,69 +538,6 @@ class SidePanel {
     }
     this.testSelector(index);
     this.cancelEdit(index);
-  }
-
-  showAAHelper(index) {
-    const selector = this.getFullSelector(index);
-    const data = this.getAAHelperData(this.currentElement.tagName, selector);
-    const isPositional = data.isPositional;
-    const tag = data.tag;
-
-    const actionRows = data.actions.map(a => `
-      <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #f0f0f0;">
-        <span style="font-weight:600; color:#2c3e50;">${a.action}</span>
-        <span style="color:#666; font-size:11px;">${a.desc}</span>
-      </div>
-    `).join('');
-
-    const positionalNote = isPositional ? `
-      <div style="margin-top:10px; padding:8px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:4px; font-size:11px; color:#856404;">
-        <strong>⚠️ Positional Selector — AA is 1-indexed</strong><br>
-        This selector uses a positional index like <code>(//xpath)[N]</code>. In Automation Anywhere, the index starts at <b>1</b> (not 0). For example, <code>(//button)[1]</code> targets the first match.
-      </div>` : '';
-
-    const selectNote = tag === 'select' ? `
-      <div style="margin-top:10px; padding:8px; background:#e8f4fd; border:1px solid #b8daff; border-radius:4px; font-size:11px; color:#004085;">
-        <strong>💡 Select Element Tip</strong><br>
-        For dropdowns, use the <b>Select Item</b> action in AA. You can select by visible text, value, or index. Selecting by visible text is most stable.
-      </div>` : '';
-
-    const modalHtml = `
-      <div class="domx-aa-modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:99999; display:flex; align-items:center; justify-content:center;">
-        <div class="domx-aa-helper" style="background:white; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.3); width:380px; max-height:80vh; overflow-y:auto; font-family:sans-serif;">
-          <div style="background:#2c3e50; color:white; padding:16px; border-radius:12px 12px 0 0; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <div style="font-weight:600; font-size:15px;">How to use in AA</div>
-              <div style="font-size:11px; opacity:0.8; margin-top:2px;">&lt;${tag}&gt; element</div>
-            </div>
-            <button class="domx-aa-close" style="background:none; border:none; color:white; font-size:22px; cursor:pointer; line-height:1;">&times;</button>
-          </div>
-          <div style="padding:16px;">
-            <div style="margin-bottom:12px;">
-              <div style="font-size:12px; font-weight:700; color:#7f8c8d; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Recommended Actions</div>
-              ${actionRows}
-            </div>
-            <div style="margin-top:12px; padding:8px; background:#f8f9fa; border-radius:4px; font-size:11px; color:#495057;">
-              <strong>📋 DomX Field:</strong> Paste into the <b>DomX</b> field of the action.
-            </div>
-            ${positionalNote}
-            ${selectNote}
-            <div style="margin-top:12px; padding:8px; background:#d4edda; border:1px solid #c3e6cb; border-radius:4px; font-size:11px; color:#155724;">
-              <strong>✅ XPath 1.0 Compatible</strong><br>
-              This selector uses standard XPath 1.0 syntax, fully supported by Automation Anywhere's DomX engine.
-            </div>
-          </div>
-        </div>
-      </div>`;
-
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = modalHtml;
-    const modal = wrapper.firstElementChild;
-    document.body.appendChild(modal);
-
-    const closeModal = () => modal.remove();
-    modal.querySelector('.domx-aa-close').addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
   }
 
   toggleSettings() {
