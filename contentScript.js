@@ -311,11 +311,24 @@
       }
     }
 
+    isUnstableClass(c) {
+      if (!c || c.length <= 2) return true;
+      if (/^[0-9]/.test(c)) return true;
+      if (/^(css-|Mui|ant-|bs-|el-|v-|chakra-|ember|react|angular|vue|ng-|sc-|styled-)/.test(c)) return true;
+      if (/^(flex|grid|block|inline|hidden|p-|m-|w-|h-|text-|bg-|border-|rounded-|shadow-|font-|leading-|tracking-|gap-|space-|items-|justify-|self-|col-|row-)/.test(c)) return true;
+      if (/^[a-zA-Z][\w]*__[\w]+-{1,2}[\w]+$/.test(c)) return true;
+      if (/^[a-z]{1,3}-[a-zA-Z0-9]{4,8}$/.test(c)) return true;
+      if (/--active|--selected|--disabled|--open|--focused|--hover/.test(c)) return true;
+      if (c.length >= 20) return true;
+      if (c.includes(' ')) return true;
+      return false;
+    }
+
     generateSelectors(el, settings) {
       const selectors = [];
       const tag = el.tagName.toLowerCase();
       const id = el.id;
-      const classes = Array.from(el.classList).filter(c => !c.match(/^[0-9]/) && c.length < 20 && !c.includes(' ') && !c.match(/^(css-|Mui|ant-)/));
+      const classes = Array.from(el.classList).filter(c => !this.isUnstableClass(c));
       const text = el.textContent?.trim().substring(0, 50);
       const hasText = text && text.length > 0 && text.length < 30 && !text.includes('\n') && !/^\s*$/.test(text);
       const ariaLabel = el.getAttribute('aria-label');
@@ -356,7 +369,17 @@
               selectors.push({
                 selector: `//${tag}[${containsClauses}]`,
                 type: 'stable',
-                reason: 'Hardened ID (auto) - Uses contains() for dynamic segments ✅ Recommended for AA'
+                reason: 'Hardened ID (auto) - Uses contains() for dynamic segments'
+              });
+            }
+            // starts-with() variant for IDs with stable prefix
+            const prefixMatch = id.match(/^([a-zA-Z][a-zA-Z_-]{2,})/);
+            if (prefixMatch && prefixMatch[1].length >= 3) {
+              const prefix = this.escapeXPathString(prefixMatch[1]);
+              selectors.push({
+                selector: `//${tag}[starts-with(@id, ${prefix})]`,
+                type: 'stable',
+                reason: 'Hardened ID (starts-with) — resilient to dynamic suffixes'
               });
             }
           }
@@ -416,26 +439,16 @@
       }
 
       // Class-based selector (filtered for meaningful classes only)
-      if (classes.length > 0 && classes.length <= 2) {
-        const meaningfulClasses = classes.filter(c => 
-          !c.match(/^(css-|ember|react|angular|vue|ng-)/) && 
-          c.length > 2 && 
-          !c.match(/^[0-9]/) &&
-          !c.includes('--active') &&
-          !c.includes('--selected')
-        );
-        
-        if (meaningfulClasses.length > 0) {
-          const classSelector = meaningfulClasses.map(c => {
-            const esc = this.escapeXPathString(c);
-            return `contains(@class, ${esc})`;
-          }).join(' and ');
-          selectors.push({
-            selector: `//${tag}[${classSelector}]`,
-            type: meaningfulClasses.length === 1 ? 'stable' : 'moderate',
-            reason: meaningfulClasses.length === 1 ? 'Single meaningful class' : 'Multiple meaningful classes'
-          });
-        }
+      if (classes.length > 0 && classes.length <= 3) {
+        const classSelector = classes.map(c => {
+          const esc = this.escapeXPathString(c);
+          return `contains(@class, ${esc})`;
+        }).join(' and ');
+        selectors.push({
+          selector: `//${tag}[${classSelector}]`,
+          type: 'moderate',
+          reason: 'Class-based — may change with framework updates'
+        });
       }
 
       // Form-specific selectors
@@ -443,8 +456,8 @@
         const escapedName = this.escapeXPathString(name);
         selectors.push({
           selector: `//${tag}[@name=${escapedName}]`,
-          type: 'moderate',
-          reason: 'Form name attribute'
+          type: 'stable',
+          reason: 'Form name attribute — stable for AA'
         });
       }
 
@@ -491,6 +504,14 @@
             type: 'moderate',
             reason: 'Visible text content'
           });
+          // normalize-space() without text() — matches full content including child nodes
+          if (el.children.length > 0) {
+            selectors.push({
+              selector: `//${tag}[normalize-space()=${escapedText}]`,
+              type: 'moderate',
+              reason: 'Full text content (includes nested elements)'
+            });
+          }
         }
       }
 
@@ -521,22 +542,13 @@
           }
 
           // Combine with classes if present
-          if (classes.length > 0 && classes.length <= 2) {
-            const meaningfulClasses = classes.filter(c => 
-              !c.match(/^(css-|ember|react|angular|vue|ng-)/) && 
-              c.length > 2 && 
-              !c.match(/^[0-9]/) &&
-              !c.includes('--active') &&
-              !c.includes('--selected')
-            );
-            if (meaningfulClasses.length > 0) {
-              const classSelector = meaningfulClasses.map(c => `contains(@class, ${this.escapeXPathString(c)})`).join(' and ');
-              selectors.push({
-                selector: `//${tag}[${classSelector} and contains(., ${escapedFirstLine})]`,
-                type: 'stable',
-                reason: 'Class + Inner text context'
-              });
-            }
+          if (classes.length > 0 && classes.length <= 3) {
+            const classSelector = classes.map(c => `contains(@class, ${this.escapeXPathString(c)})`).join(' and ');
+            selectors.push({
+              selector: `//${tag}[${classSelector} and contains(., ${escapedFirstLine})]`,
+              type: 'stable',
+              reason: 'Class + Inner text context'
+            });
           }
         }
       }
@@ -565,11 +577,7 @@
       const parent = el.parentElement;
       if (parent && parent.tagName !== 'BODY' && parent.tagName !== 'HTML') {
         const parentId = parent.id;
-        const parentClasses = Array.from(parent.classList).filter(c => 
-          !c.match(/^(css-|ember|react|angular|vue|ng-)/) && 
-          c.length > 2 && 
-          !c.match(/^[0-9]/)
-        );
+        const parentClasses = Array.from(parent.classList).filter(c => !this.isUnstableClass(c));
         
         // Parent with ID
         if (parentId && parentId.length > 1) {
@@ -591,6 +599,51 @@
             selector: `//*[${parentClassSelector}]//${tag}`,
             type: 'moderate',
             reason: 'Parent class context'
+          });
+        }
+      }
+
+      // Ancestor-anchored relative XPath (AA recommended pattern)
+      let anchorId = null;
+      let anchorEl = el.parentElement;
+      for (let i = 0; i < 5 && anchorEl && anchorEl.tagName !== 'BODY' && anchorEl.tagName !== 'HTML'; i++) {
+        const aId = anchorEl.id;
+        if (aId && aId.length > 1 && !aId.includes(' ') && !/\d{2,}/.test(aId)) {
+          anchorId = aId;
+          break;
+        }
+        const aName = anchorEl.getAttribute('name');
+        if (aName && aName.length > 1 && aName.length < 40) {
+          anchorId = null;
+          const escAnchorName = this.escapeXPathString(aName);
+          const anchorTag = anchorEl.tagName.toLowerCase();
+          selectors.push({
+            selector: `//${anchorTag}[@name=${escAnchorName}]//${tag}`,
+            type: 'stable',
+            reason: 'Ancestor-anchored (name) — AA recommended pattern'
+          });
+          break;
+        }
+        anchorEl = anchorEl.parentElement;
+      }
+      if (anchorId) {
+        const escAnchorId = this.escapeXPathString(anchorId);
+        selectors.push({
+          selector: `//*[@id=${escAnchorId}]//${tag}`,
+          type: 'stable',
+          reason: 'Ancestor-anchored (id) — AA recommended pattern'
+        });
+        // Combined anchor + target attribute (strongest for AA)
+        const targetAttr = name ? `@name=${this.escapeXPathString(name)}`
+          : ariaLabel ? `@aria-label=${this.escapeXPathString(ariaLabel.trim())}`
+          : role ? `@role=${this.escapeXPathString(role)}`
+          : (type && tag === 'input') ? `@type=${this.escapeXPathString(type)}`
+          : null;
+        if (targetAttr) {
+          selectors.push({
+            selector: `//*[@id=${escAnchorId}]//${tag}[${targetAttr}]`,
+            type: 'stable',
+            reason: 'Combined anchor + attribute — strongest for AA'
           });
         }
       }
@@ -659,6 +712,75 @@
         }
       }
 
+      // Following-sibling/preceding-sibling axis selectors (for any element)
+      if (el.previousElementSibling) {
+        const prevSib = el.previousElementSibling;
+        const prevTag = prevSib.tagName.toLowerCase();
+        const prevText = prevSib.textContent?.trim().substring(0, 40);
+        if (prevText && prevText.length > 1 && prevText.length < 40 && ['label', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'dt', 'td', 'th', 'p'].includes(prevTag)) {
+          const escPrevText = this.escapeXPathString(prevText);
+          selectors.push({
+            selector: `//${prevTag}[normalize-space()=${escPrevText}]/following-sibling::${tag}[1]`,
+            type: 'moderate',
+            reason: 'Sibling axis — anchored to visible text'
+          });
+        }
+      }
+      // For table cells: preceding-sibling td/th with header text
+      if (tag === 'td' || tag === 'th') {
+        const prevCell = el.previousElementSibling;
+        if (prevCell && (prevCell.tagName === 'TD' || prevCell.tagName === 'TH')) {
+          const cellLabel = prevCell.textContent?.trim().substring(0, 40);
+          if (cellLabel && cellLabel.length > 1 && cellLabel.length < 40) {
+            const escCellLabel = this.escapeXPathString(cellLabel);
+            selectors.push({
+              selector: `//${prevCell.tagName.toLowerCase()}[normalize-space()=${escCellLabel}]/following-sibling::${tag}[1]`,
+              type: 'moderate',
+              reason: 'Table cell sibling — anchored to adjacent cell text'
+            });
+          }
+        }
+      }
+
+      // Table-aware selectors
+      const closestTable = el.closest('table');
+      if (closestTable) {
+        const closestRow = el.closest('tr');
+        if (closestRow) {
+          const cells = Array.from(closestRow.querySelectorAll('td, th'));
+          const elCell = el.closest('td, th');
+          const colIndex = elCell ? cells.indexOf(elCell) + 1 : 0;
+          // Find table identifier
+          const tableId = closestTable.id && !/\d{2,}/.test(closestTable.id) ? `@id=${this.escapeXPathString(closestTable.id)}` : null;
+          const tableClass = !tableId && Array.from(closestTable.classList).find(c => !this.isUnstableClass(c));
+          const tableAnchor = tableId || (tableClass ? `contains(@class, ${this.escapeXPathString(tableClass)})` : null);
+          const tablePrefix = tableAnchor ? `//table[${tableAnchor}]` : '//table';
+
+          // Row-by-content: find a unique text in a sibling cell
+          if (colIndex > 0) {
+            for (const cell of cells) {
+              if (cell === elCell) continue;
+              const cellText = cell.textContent?.trim().substring(0, 40);
+              if (cellText && cellText.length > 1 && cellText.length < 40 && !cellText.match(/^\d+$/)) {
+                const escCellText = this.escapeXPathString(cellText);
+                selectors.push({
+                  selector: `${tablePrefix}//tr[td[contains(., ${escCellText})]]/td[${colIndex}]`,
+                  type: 'stable',
+                  reason: 'Table row-by-content — finds row by sibling cell text'
+                });
+                break;
+              }
+            }
+            // Variable template for AA loops
+            selectors.push({
+              selector: `${tablePrefix}//tr[$RowIndex$]/td[${colIndex}]`,
+              type: 'moderate',
+              reason: 'Table variable template — replace $RowIndex$ with AA variable'
+            });
+          }
+        }
+      }
+
       // Position-based selector using AA-compatible (//xpath)[N] wrapper
       const allMatches = Array.from(document.querySelectorAll(tag));
       const elIndex = allMatches.indexOf(el);
@@ -672,35 +794,26 @@
           const escapedRole = this.escapeXPathString(role);
           selectors.push({
             selector: `(//${tag}[@role=${escapedRole}])[${position}]`,
-            type: 'moderate',
-            reason: `${displayIdx} item in list (Change [${position}] to [1] for first item)`
+            type: 'risky',
+            reason: `${displayIdx} item in list — positional, may shift`
           });
         }
 
         // Combine with meaningful class
-        if (classes.length > 0 && classes.length <= 2) {
-          const meaningfulClasses = classes.filter(c => 
-            !c.match(/^(css-|ember|react|angular|vue|ng-)/) && 
-            c.length > 2 && 
-            !c.match(/^[0-9]/) &&
-            !c.includes('--active') &&
-            !c.includes('--selected')
-          );
-          if (meaningfulClasses.length > 0) {
-            const classSelector = meaningfulClasses.map(c => `contains(@class, ${this.escapeXPathString(c)})`).join(' and ');
-            selectors.push({
-              selector: `(//${tag}[${classSelector}])[${position}]`,
-              type: 'moderate',
-              reason: `${displayIdx} matching element (Change [${position}] to [1] for first item)`
-            });
-          }
+        if (classes.length > 0 && classes.length <= 3) {
+          const classSelector = classes.map(c => `contains(@class, ${this.escapeXPathString(c)})`).join(' and ');
+          selectors.push({
+            selector: `(//${tag}[${classSelector}])[${position}]`,
+            type: 'risky',
+            reason: `${displayIdx} matching element — positional, may shift`
+          });
         }
 
         // Tag-only positional selector (highly useful for grids where data/classes change)
         selectors.push({
           selector: `(//${tag})[${position}]`,
-          type: 'stable',
-          reason: `Exact structure position (Change [${position}] to [1] to always get 1st item)`
+          type: 'risky',
+          reason: `Positional index — FRAGILE, breaks when page structure changes`
         });
       }
 
@@ -709,13 +822,33 @@
         selectors.push({
           selector: `//${tag}`,
           type: 'risky',
-          reason: 'Tag only - Use only if necessary — ⚠️ FRAGILE'
+          reason: 'Tag only - Use only if necessary — FRAGILE'
         });
       }
 
+      // Auto-uniqueness check
+      for (const s of selectors) {
+        try {
+          if (s.selector.includes('$')) { s.matchCount = -1; continue; }
+          const r = document.evaluate(s.selector, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+          s.matchCount = r.snapshotLength;
+          if (s.matchCount === 1) s.reason += ' [Unique]';
+          else if (s.matchCount === 0) s.reason += ' [No match]';
+          else s.reason += ` [${s.matchCount} matches]`;
+        } catch (e) { s.matchCount = -1; }
+      }
+
+      // Mark recommended selector (first unique + stable)
+      const recommended = selectors.find(s => s.matchCount === 1 && s.type === 'stable');
+      if (recommended) recommended.recommended = true;
+
       // Sort by stability rank: stable first, then moderate, then risky
       const rank = { stable: 0, moderate: 1, risky: 2 };
-      selectors.sort((a, b) => (rank[a.type] ?? 3) - (rank[b.type] ?? 3));
+      selectors.sort((a, b) => {
+        if (a.recommended && !b.recommended) return -1;
+        if (!a.recommended && b.recommended) return 1;
+        return (rank[a.type] ?? 3) - (rank[b.type] ?? 3);
+      });
 
       // Filter fragile selectors if showFragile is off
       if (settings && !settings.showFragile) {
@@ -800,7 +933,7 @@
       this.originFrameId = 0;
       if (!this.container) this.createPanel();
       const content = this.container.querySelector('#domx-content');
-      content.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#666;"><div style="font-size:24px;margin-bottom:10px;">🔍</div><div style="font-weight:600;margin-bottom:8px;color:#2c3e50;">DomX Inspector</div><div style="font-size:12px;line-height:1.5;">Click "Start Picking" to activate picker mode, then click any element on the page to generate selectors.</div></div>';
+      content.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#666;"><div style="font-weight:600;margin-bottom:8px;color:#2c3e50;">DomX Inspector</div><div style="font-size:12px;line-height:1.5;">Click "Start Picking" to activate picker mode, then click any element on the page to generate selectors.</div></div>';
       this.container.style.display = 'block';
     }
 
@@ -823,7 +956,7 @@
             </div>
             <div style="flex:1; display:flex; justify-content:flex-end; align-items:center; gap:8px;">
               <button id="domx-new-element-btn" style="background:#3498db; border:none; color:white; font-size:12px; cursor:pointer; line-height:1; padding:6px 12px; border-radius:4px; font-weight:600;" title="Pick a new element">+ New Element</button>
-              <button id="domx-settings-btn" style="background:none; border:none; color:rgba(255,255,255,0.7); font-size:16px; cursor:pointer; line-height:1; padding:2px 4px;" title="Settings">⚙</button>
+              <button id="domx-settings-btn" style="background:none; border:none; color:rgba(255,255,255,0.7); font-size:12px; cursor:pointer; line-height:1; padding:2px 4px; font-weight:600;" title="Settings">Settings</button>
               <button id="domx-close" style="background:none; border:none; color:white; font-size:20px; cursor:pointer; line-height:1;">&times;</button>
             </div>
           </div>
@@ -1008,15 +1141,15 @@
         for (let i = 0; i < r.snapshotLength; i++) matchedNodes.push(r.snapshotItem(i));
       } catch(e) { error = e.message; }
       if (error) {
-        output.innerHTML = `<div style="padding:10px; background:#fdf2f2; color:#c81e1e; border:1px solid #f9d7d7; border-radius:6px; font-size:12px;"><strong>❌ XPath Error:</strong> ${this.escapeHtml(error)}<br><span style="font-size:11px; color:#999;">Check your syntax — AA uses XPath 1.0 only.</span></div>`;
+        output.innerHTML = `<div style="padding:10px; background:#fdf2f2; color:#c81e1e; border:1px solid #f9d7d7; border-radius:6px; font-size:12px;"><strong>XPath Error:</strong> ${this.escapeHtml(error)}<br><span style="font-size:11px; color:#999;">Check your syntax — AA uses XPath 1.0 only.</span></div>`;
         return;
       }
       if (count === 0) {
-        output.innerHTML = `<div style="padding:10px; background:#fdf2f2; color:#c81e1e; border:1px solid #f9d7d7; border-radius:6px; font-size:12px;"><strong>❌ No match</strong> — Selector returned 0 results on this page.<br><span style="font-size:11px; color:#999;">Check if element is inside an iframe or if page content is dynamically loaded.</span></div>`;
+        output.innerHTML = `<div style="padding:10px; background:#fdf2f2; color:#c81e1e; border:1px solid #f9d7d7; border-radius:6px; font-size:12px;"><strong>No match</strong> — Selector returned 0 results on this page.<br><span style="font-size:11px; color:#999;">Check if element is inside an iframe or if page content is dynamically loaded.</span></div>`;
         return;
       }
       const color = count === 1 ? '#27ae60' : '#f39c12';
-      const badge = count === 1 ? '✅ Unique match' : `⚡ ${count} matches`;
+      const badge = count === 1 ? 'Unique match' : `${count} matches`;
       const tip = count === 1 ? 'Ideal for AA — no index needed.' : `Multiple matches — use <code>(${this.escapeHtml(xpath)})[N]</code> in AA. AA index starts at 1.`;
       const items = matchedNodes.slice(0, 10).map(node => {
         const tag = node.tagName.toLowerCase();
@@ -1081,7 +1214,7 @@
 
       this.settingsPanel.innerHTML = `
         <div style="background:#2c3e50; color:white; padding:16px; border-radius:12px 12px 0 0; display:flex; justify-content:space-between; align-items:center;">
-          <div style="font-weight:600; font-size:15px;">⚙ Settings</div>
+          <div style="font-weight:600; font-size:15px;">Settings</div>
           <button id="domx-settings-close" style="background:none; border:none; color:white; font-size:22px; cursor:pointer; line-height:1;">&times;</button>
         </div>
         <div style="padding:16px;">
@@ -1142,7 +1275,7 @@
       if (!fi) {
         return `
           <div style="background:#fff3cd; color:#856404; padding:10px; border-radius:6px; font-size:11px; margin-bottom:15px; border:1px solid #ffeaa7;">
-            <strong>⚠️ IFRAME DETECTED</strong><br>
+            <strong>IFRAME DETECTED</strong><br>
             In Automation Anywhere, use <b>"Browser: Switch to frame"</b> before interacting.<br>
             <div style="margin-top:5px; padding:4px; background:rgba(255,255,255,0.5); font-family:monospace; border-radius:3px;">
               URL: ${(this.currentData.iframeUrl || '').substring(0, 40)}...<br>
@@ -1161,7 +1294,7 @@
         <div style="background:#1a1a2e; border-radius:8px; margin-bottom:15px; overflow:hidden; font-size:11px; border:1px solid #16213e;">
           <div style="background:#16213e; color:#e0e0ff; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
             <div>
-              <strong style="font-size:13px;">🔲 IFRAME CONTEXT</strong>
+              <strong style="font-size:13px;">IFRAME CONTEXT</strong>
               <span style="opacity:0.7; margin-left:8px;">Depth: ${depth}</span>
             </div>
             <span style="background:#e74c3c; color:white; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:bold;">AA: FRAME SWITCH REQUIRED</span>
@@ -1172,7 +1305,7 @@
       if (isCrossOrigin) {
         html += `
             <div style="background:#4a1c1c; color:#ff9999; padding:8px; border-radius:4px; margin-bottom:10px; border:1px solid #6b2c2c;">
-              <strong>⚠️ Cross-Origin Frame</strong><br>
+              <strong>Cross-Origin Frame</strong><br>
               Some frame XPaths were resolved via fallback. Verify in AA's recorder if needed.
             </div>`;
       }
@@ -1249,17 +1382,18 @@
       }
 
       if (this.currentData.isCustomDropdown) {
-        details += `<div style="background:#e8f4fd; color:#004085; padding:8px; border-radius:4px; font-size:11px; margin-bottom:15px; border:1px solid #b8daff;">💡 <strong>Custom Dropdown:</strong> Target the toggle first, then the item.</div>`;
+        details += `<div style="background:#e8f4fd; color:#004085; padding:8px; border-radius:4px; font-size:11px; margin-bottom:15px; border:1px solid #b8daff;"><strong>Custom Dropdown:</strong> Target the toggle first, then the item.</div>`;
       }
 
       if (this.currentData.inShadowDOM) {
-        details += `<div style="background:#f8d7da; color:#721c24; padding:10px; border-radius:6px; font-size:11px; margin-bottom:15px; border:1px solid #f5c6cb;"><strong>⚠️ SHADOW DOM DETECTED</strong><br>This element is inside a Shadow DOM tree. XPath selectors may not penetrate shadow boundaries in Automation Anywhere. Consider using JavaScript-based selection or targeting the shadow host instead.</div>`;
+        details += `<div style="background:#f8d7da; color:#721c24; padding:10px; border-radius:6px; font-size:11px; margin-bottom:15px; border:1px solid #f5c6cb;"><strong>SHADOW DOM DETECTED</strong><br>This element is inside a Shadow DOM tree. XPath selectors may not penetrate shadow boundaries in Automation Anywhere. Consider using JavaScript-based selection or targeting the shadow host instead.</div>`;
       }
 
       const selectorsHtml = this.currentSelectors.map((s, i) => {
         const badge = s.type === 'stable' ? {bg:'#ecfdf5', fg:'#065f46', dot:'#10b981', tip:'Ideal for A360 Recorder'} : 
                      (s.type === 'moderate' ? {bg:'#fffbeb', fg:'#92400e', dot:'#f59e0b', tip:'Stable fallback'} : {bg:'#fef2f2', fg:'#991b1b', dot:'#ef4444', tip:'Avoid if possible'});
         
+        const recommendedBanner = s.recommended ? '<div style="background:linear-gradient(135deg,#065f46,#047857);color:white;padding:8px 12px;border-radius:6px;margin-bottom:10px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;">RECOMMENDED FOR AUTOMATION ANYWHERE</div>' : '';
         const isPositional = s.selector.includes(')[');
         const aaNote = isPositional ? '<div style="font-size:10px;color:#92400e;background:#fffbeb;padding:5px 8px;border-radius:4px;margin-top:6px;border:1px solid #fde68a;">AA index starts at 1, not 0 — change [N] to target different matches.</div>' : '';
         const isFragile = s.type === 'risky' ? '<div style="font-size:10px;color:#991b1b;background:#fef2f2;padding:5px 8px;border-radius:4px;margin-top:4px;border:1px solid #fecaca;">FRAGILE — May break if page structure changes. Prefer stable selectors above.</div>' : '';
@@ -1280,7 +1414,8 @@
         }
 
         return `
-          <div style="background:white; border:1px solid #dee2e6; border-radius:8px; padding:14px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+          <div style="background:white; border:1px solid ${s.recommended ? '#065f46' : '#dee2e6'}; border-radius:8px; padding:14px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);${s.recommended ? ' border-width:2px;' : ''}">
+            ${recommendedBanner}
             <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
               <span style="display:inline-flex; align-items:center; gap:5px; background:${badge.bg}; color:${badge.fg}; padding:3px 10px; border-radius:6px; font-size:10px; font-weight:600; letter-spacing:0.8px; line-height:1;"><span style="width:6px; height:6px; border-radius:50%; background:${badge.dot}; flex-shrink:0;"></span>${s.type.toUpperCase()}</span>
               <span style="color:#95a5a6; font-size:11px;">${s.reason}</span>
@@ -1395,7 +1530,7 @@
     test(i) {
       const sel = this.getSel(i);
       const res = this.container.querySelector('#domx-res');
-      res.innerHTML = '<div style="color:#3498db; font-size:13px;">🧪 Validating...</div>';
+      res.innerHTML = '<div style="color:#3498db; font-size:13px;">Validating...</div>';
       if (this.originFrameId > 0) {
         chrome.runtime.sendMessage({ action: 'testSelectorInFrame', targetFrameId: this.originFrameId, selector: sel, index: i });
       } else {
@@ -1458,7 +1593,7 @@
       const res = this.container.querySelector('#domx-res');
       res.innerHTML = '<div style="color:#6c757d; font-size:13px;">⏳ Retrying in 2 seconds...</div>';
       setTimeout(() => {
-        res.innerHTML = '<div style="color:#3498db; font-size:13px;">🧪 Validating...</div>';
+        res.innerHTML = '<div style="color:#3498db; font-size:13px;">Validating...</div>';
         this.runTest(this.lastTestedSelector, false, true);
       }, 2000);
     }
@@ -1471,13 +1606,13 @@
       }
 
       const color = r.count === 0 ? '#e74c3c' : (r.count === 1 ? '#27ae60' : '#f39c12');
-      const text = r.count === 0 ? 'No match found' : (r.count === 1 ? '✅ Unique match found!' : `⚡ ${r.count} matches found`);
+      const text = r.count === 0 ? 'No match found' : (r.count === 1 ? 'Unique match found!' : `${r.count} matches found`);
       let automationTip = '';
 
       if (r.count > 1) {
-        automationTip = '<br><span style="font-size:11px;">💡 In Automation Anywhere, use (xpath)[index] to target specific element</span>';
+        automationTip = '<br><span style="font-size:11px;">In Automation Anywhere, use (xpath)[index] to target specific element</span>';
       } else if (r.count === 1) {
-        automationTip = '<br><span style="font-size:11px;">✨ Perfect for Automation Anywhere - no index needed</span>';
+        automationTip = '<br><span style="font-size:11px;">Perfect for Automation Anywhere - no index needed</span>';
       }
 
       let miniList = '';
@@ -1494,12 +1629,12 @@
 
       let dynamicWarning = '';
       if (r.isRetry && r.count !== this.lastMatchCount && this.lastMatchCount !== null) {
-        dynamicWarning = `<div style="margin-top:10px; padding:8px; background:#fff3cd; color:#856404; border:1px solid #ffeaa7; border-radius:6px; font-size:11px;"><strong>⚠️ Dynamic Content Detected</strong><br>Match count changed between retries (${this.lastMatchCount} → ${r.count}). This selector may be unstable on this page.</div>`;
+        dynamicWarning = `<div style="margin-top:10px; padding:8px; background:#fff3cd; color:#856404; border:1px solid #ffeaa7; border-radius:6px; font-size:11px;"><strong>Dynamic Content Detected</strong><br>Match count changed between retries (${this.lastMatchCount} → ${r.count}). This selector may be unstable on this page.</div>`;
       }
 
       let retryButton = '';
       if (r.count === 0 && this.lastTestedSelector && !r.isRetry) {
-        retryButton = `<div style="margin-top:10px;"><button id="domx-retry-btn" style="padding:8px 16px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">🔄 Retry in 2s</button></div>`;
+        retryButton = `<div style="margin-top:10px;"><button id="domx-retry-btn" style="padding:8px 16px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">Retry in 2s</button></div>`;
       }
 
       res.innerHTML = `<div style="padding:12px; background:${color}10; color:${color}; border:1px solid ${color}40; border-radius:6px; font-size:13px;"><strong>${text}</strong>${automationTip}</div>${miniList}${dynamicWarning}${retryButton}`;
@@ -1550,7 +1685,7 @@
           if (node.tagName === 'OPTION' && node.parentElement) {
             const label = document.createElement('div');
             label.style.cssText = 'position:absolute; top:-28px; left:0; background:#27ae60; color:white; padding:3px 8px; font-size:11px; font-weight:bold; border-radius:4px; white-space:nowrap; box-shadow:0 2px 4px rgba(0,0,0,0.2);';
-            label.textContent = `✓ Option matched: ${node.text}`;
+            label.textContent = `Option matched: ${node.text}`;
             hi.appendChild(label);
           }
           
@@ -1592,13 +1727,13 @@
       let fieldNote = 'Paste into the <b>DomX</b> field of the action.';
       let positionalNote = isPositional ? `
             <div style="margin-top:8px; padding:8px; background:#fff3cd; border:1px solid #ffeeba; border-radius:4px; font-size:11px; color:#856404;">
-              <strong>⚠️ Positional Match:</strong> In Automation Anywhere, you might need to use the <code>(xpath)[index]</code> format to target this specific element if there are multiple matches.
+              <strong>Positional Match:</strong> In Automation Anywhere, you might need to use the <code>(xpath)[index]</code> format to target this specific element if there are multiple matches.
             </div>` : '';
       let selectNote = '';
       if (this.currentData && this.currentData.isCustomDropdown) {
         selectNote = `
             <div style="margin-top:8px; padding:8px; background:#e8f4f8; border:1px solid #b8daff; border-radius:4px; font-size:11px; color:#004085;">
-              <strong>💡 Custom Dropdown:</strong> This is a custom UI dropdown. In Automation Anywhere, use a two-step process: (1) Click this element to open the menu, then (2) Capture and click the option you want.
+              <strong>Custom Dropdown:</strong> This is a custom UI dropdown. In Automation Anywhere, use a two-step process: (1) Click this element to open the menu, then (2) Capture and click the option you want.
             </div>`;
       }
 
@@ -1676,7 +1811,7 @@
 
         iframeSection = `
             <div style="margin-top:12px; padding:10px; background:#fff8e1; border:1px solid #ffe082; border-radius:6px;">
-              <div style="font-size:12px; font-weight:700; color:#f57f17; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">🔲 Iframe Workflow (Required)</div>
+              <div style="font-size:12px; font-weight:700; color:#f57f17; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Iframe Workflow (Required)</div>
               <div style="font-size:11px; color:#856404; margin-bottom:8px;">This element is inside ${framePath.length > 1 ? framePath.length + ' nested iframes' : 'an iframe'}. You must switch frames before interacting.</div>
               ${iframeSteps}
               ${fi.frameDomPath ? `<div style="margin-top:8px; padding:6px; background:rgba(0,0,0,0.05); border-radius:4px; font-size:10px; color:#495057;"><strong>FrameDomPath:</strong> <code>${this.escapeHtml(fi.frameDomPath)}</code></div>` : ''}
@@ -1699,12 +1834,12 @@
               ${actionRows}
             </div>
             <div style="margin-top:12px; padding:8px; background:#f8f9fa; border-radius:4px; font-size:11px; color:#495057;">
-              <strong>📋 DomX Field:</strong> ${fieldNote}
+              <strong>DomX Field:</strong> ${fieldNote}
             </div>
             ${positionalNote}
             ${selectNote}
             <div style="margin-top:12px; padding:8px; background:#d4edda; border:1px solid #c3e6cb; border-radius:4px; font-size:11px; color:#155724;">
-              <strong>✅ XPath 1.0 Compatible</strong><br>
+              <strong>XPath 1.0 Compatible</strong><br>
               This selector uses standard XPath 1.0 syntax, fully supported by Automation Anywhere's DomX engine.
             </div>
           </div>
